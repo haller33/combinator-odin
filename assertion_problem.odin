@@ -9,20 +9,34 @@ Poly :: struct {
     data : union { string, int, bool, f32 },
 }
 
-Tuple :: struct {
-    ret : [dynamic]Poly,
+TupleP :: struct($a: typeid) {
+
+    fst : a,
+    rest : Text,
+}
+Text :: struct {
+
+    line : int,
+    str : string,
+}
+
+Tuple :: struct ($a: typeid) {
+    input : Text,
+    ret : [dynamic]TupleP(a),
 }
 
 main :: proc () {
 
     {
-	a : Tuple
+	a : Tuple ( Poly )
 	
-	append( &(a.ret), Poly { data = 42 } )
-	append( &(a.ret), Poly { data = 93.93 } )
-	append( &(a.ret), Poly { data = "Hi 5" } )
-	append( &(a.ret), Poly { data = true } )
+	append( &(a.ret), TupleP (Poly) { fst = Poly { data = 42 }, rest = Text{}} )
+	append( &(a.ret), TupleP (Poly) { fst = Poly { data = 93.93 }, rest = Text{}} )
+	append( &(a.ret), TupleP (Poly) { fst = Poly { data = "Hi 5" }, rest = Text{}} )
+	append( &(a.ret), TupleP (Poly) { fst = Poly { data = true }, rest = Text{}} )
 
+	n := 
+	
 	fmt.println ( a )
     }
 }

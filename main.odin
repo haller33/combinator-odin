@@ -1,6 +1,6 @@
 package combinator
 
-import "core:io"
+import "core:os"
 import "core:fmt"
 import "core:mem"
 import "core:strings"
@@ -8,35 +8,17 @@ import strc "core:strconv"
 import qu "core:container/queue"
 
 DEBUG :: true
-Monadic_Context :: struct($T: typeid) {
-	
-	last : [dynamic]T,
-	m : qu.Queue(T),
+
+
+Text :: struct {
+
+    line : int,
+    str : string,
 }
-
-M :: union ($T : typeid) { [dynamic]T }
-
-/*
-Monad :: proc ( $Monad : typeid ) -> proc ( a, m : Monad ) {
-
-	return
-}
-*/
-
-ContainerM :: struct ( $INPUT: typeid, $RET: typeid ) {
-
-    input : INPUT,
-    swap  : INPUT,
-    chain : RET,
-    ret   : RET,
-    fun   : rawptr,
-}
-
-// Values :: union #no_nil {string, int, f32} // not working 
 
 Poly :: struct {
 
-    data : union { string, int, bool, f32 },
+    data : union { string, int, bool, f32, rune },
 }
 
 Tuple :: struct($F: typeid, $S : typeid) {
@@ -45,20 +27,14 @@ Tuple :: struct($F: typeid, $S : typeid) {
     snd : S,
 }
 
-TupleU :: struct($T: typeid) {
-
-    fst : T,
-    snd : T,
-}
-
 TupleP :: struct($T: typeid) {
 
     fst : T,
-    rest : string,
+    rest : []Text,
 }
 
 Parser :: struct($a: typeid) {
-    input : string,
+    input : []Text,
     ret : [dynamic]TupleP(a),
 }
 
@@ -72,26 +48,7 @@ Just :: Id
 Right :: Id
 
 
-lazy :: proc ( a : int ) -> (int, proc ( int ) -> int) {
-	
-	return a, proc ( mci : int ) -> int {
-
-		return mci
-	}
-}
-/*
-// compose ( m, n, n2 )
-compose :: proc ( m : int, n : proc ( int ) -> int, n2 : proc ( int ) -> int ) {
-
-	m2 := n ( m )
-	return  proc ( )  n2 ( m2 )
-} */
-
-
-
 Left_Err :: struct { ok : bool, msg : string, line : int, procedure_name : string, value : union {string, int, bool} }
-
-// Either :: union($Right: typeid) #no_nil {Right, Left_Err}
 
 Either :: union($Right: typeid) {Right, Left_Err} // nil be the no correct return
 
@@ -102,140 +59,103 @@ Either_Struct :: struct ( $R : typeid, $L : typeid ) {
 }
 
 EitherU :: struct($R: typeid, $L: typeid) {
+    
     data: union { L, R },
 }
 
+charIn :: proc ( input : string ) -> Either ( Parser ( Poly ) ) {
 
-// safe division
-dive :: proc ( num : int, base : int ) -> Either ( int ) {
-
-    if base == 0 do return Left_Err {
-		msg = "some division problem" }
-	// if num == 42 do return Left_Err { msg = "some error using the answer of everything" }
-    return Right ( num / base )
+    return Parser ( Poly ) {}
 }
 
-/*
 
-sat :: proc ( mc : Monadic_Context, fun : proc ( rune ) -> bool ) -> Either ( bool ) { // -> Parser ( rune ) {
+read_entire_file_from_path :: proc (file_path_name : string) -> (string, bool) {
 
-	return proc ( mc : Monadic_Context, on_input : string ) {
-		if fun ( mc, on_input ) {
-			return true
-		} return false
-	}
+    data_text_digest, ok := os.read_entire_file(file_path_name, context.allocator)
+    if !ok {
+	// could not read file
+	fmt.println("cannot read file")
+	return "", false
+    }
+    // defer delete(data_text_digest, context.allocator)
+
+    return string(data_text_digest), ok
 }
 
-*/
 
-main_test :: proc () {
+string_to_texto_typo :: proc ( file_text : string ) -> []Text {
+    
+    split_string : []string = strings.split_after ( file_text, "\n" )
+    
+    // strings_values : []string = split_string[:len(split_string)-1]
 
-    when !DEBUG {
-	n := EitherU ( int, string ) { data = 42 }
-	
-	a : Either ( Parser ( string ) )
+    arr_values : [dynamic]Text
+    // defer delete ( arr_values )
+    // defer delete(arr_values)
 
-	a = nil
+    for idx in 0..<len ( split_string ) {
 
-	a = Parser ( string ) { input = "hello world" }
+	append ( &arr_values, Text { str = split_string[idx], line = idx } )
+    }
 
-	fmt.println ( a )
-	// fmt.println ( b )
-	
-	fmt.println ( dive ( 1, 1 ) )
-	fmt.println ( dive ( 1, 0 ) )
-	fmt.println ( dive ( 42, 1 ) )
-	
+    return arr_values[:]
+}
+
+text_to_parser :: proc ( text : []Text ) -> Parser ( Poly ) {
+
+    parse_data : Parser ( Poly )
+
+    parse_data.input = text
+    
+    return parse_data
+}
+
+charIs :: proc ( psr : Parser ( Poly ), is_char : rune ) -> Either ( Parser ( Poly ) ) {
+
+    if len ( psr.input ) == 0 {
+
+	return Left_Err { msg = "input empty array", procedure_name = "charIs" }
     }
     
-    when !DEBUG {
-	fmt.println ( "tuple" )
-	a : TupleP ( int ) 
-
-	fmt.println ( a )
-
+    if rune (psr.input [ 0 ].str[0]) == is_char {
+ 
+	return psr // coorrect
+    } else {
+	return nil
     }
-    {
-	a : Parser ( Poly )
-	// a : Parser ( int )
-
-	b : Parser ( string )
-	
-	// append( &(a.ret), TupleP ( int ) { fst = 1, rest = ""} )
-	// append( &(a.ret), TupleP ( int ) { fst = 3445, rest = ""} )
-	append( &(a.ret), TupleP ( Poly ) { fst = Poly { data = 42 }, rest = ""} )
-	append( &(a.ret), TupleP ( Poly ) { fst = Poly { data = 93.93 }, rest = ""} )
-	append( &(a.ret), TupleP ( Poly ) { fst = Poly { data = "Hi 5" }, rest = ""} )
-	
-
-	fmt.println ( a )
-	fmt.println ( b )
-    }
-    return
-}
-
-/*
-curry_sum :: proc ( m : ^ContainerM ( int, int ), one : int ) -> (proc ( ^Container ( int, int ) ) -> ( proc ( ^ContainerM ( int, int ) ) -> int ) ) {
-
-    lazyM ( m^, one )
-    return proc ( m2 : ^ContainerM ( int, int ), two : int ) -> proc ( ^ContainerM ( int, int ) -> int {
-
-	lazyM ( m2^, two, SWAP )
-	return proc ( m3 : ^ContainerM ) -> int {
-	    return (m3^).chain + (m3^).swap
-	}
-    }
-}
-*/
-MODES :: enum {
-
-    CHAIN,
-    PASS,
-    TWO_SWAP_PASS,
-    SWAP,
-}
-
-lazyM :: proc ( m : ^ContainerM (int, int), a : int, mode : MODES = MODES.CHAIN ) -> proc ( ^ContainerM (int, int) ) -> int {
-
-    if  mode == MODES.SWAP {
-	(m^).swap = a
-	fn :: proc ( mi : ^ContainerM (int, int) ) -> int {
-	    (mi^).ret = (mi^).swap
-	    return (mi^).ret
-	}
-	(m^).fun = cast(rawptr) fn
-	return fn
-    }
-    // if mode == MODES.CHAIN || true {
-    	(m^).chain = a
-	return proc ( mi : ^ContainerM (int, int) ) -> int {
-	    (mi^).ret = (mi^).chain
-	    return (mi^).ret
-	}
-    // } 
+    
+    return psr
 }
 
 main :: proc () {
 
-    {
-
-	m, n := lazy ( 42 )
-	m2, n2 := lazy ( 44 )
-
-	// fmt.println ( compose ( m, n, n2 ) )
-    }
-
     when !DEBUG {
-	main_test()
+	a : Parser ( Poly )
+	// a : Parser ( int )
+
+	b : Parser ( Text )
+	
+	append( &(a.ret), TupleP ( Poly ) { fst = Poly { data = 42 }, rest = Text{} } )
+	append( &(a.ret), TupleP ( Poly ) { fst = Poly { data = 93.93 }, rest = Text{} } )
+	append( &(a.ret), TupleP ( Poly ) { fst = Poly { data = "Hi 5" }, rest = Text{} } )
+
+	fmt.println ( a )
+	fmt.println ( b )
     }
 
     {
-	m : ContainerM ( int, int )
-	fun := lazyM ( &m, 5 )
+	file_string, ok := read_entire_file_from_path ( "test.ini" )
+	if !ok {
 
-	n := 42
-	fmt.println ( fun ( &m ) )
+	}
+	defer delete ( file_string )
+
+	/// for future review
+	file_text_parser := string_to_texto_typo ( file_string )
+	defer delete ( file_text_parser )
+
+	parser := text_to_parser ( file_text_parser )
+	
+	fmt.println ( parser )
     }
 }
-
-
