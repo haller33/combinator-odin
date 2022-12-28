@@ -6,8 +6,9 @@ import "core:mem"
 import "core:strings"
 import qu "core:container/queue"
 
-SHOW_LEAK :: true
-TEST_MODE :: true
+SHOW_LEAK :: false
+TEST_MODE :: false
+STRESS_TEST :: true
 
 Any :: union { int, f32, string, bool, rune }
 
@@ -19,7 +20,6 @@ Slack :: struct {
     
     stack : qu.Queue ( Poly ),
 }
-
 
 push_raw :: proc ( m : rawptr, value : Poly ) {
 
@@ -101,29 +101,65 @@ begin_container :: proc ( ) -> (^Slack, ^qu.Queue(Poly)) {
 }
 */
 
-test :: proc () {
+procedural_mult :: proc ( num : int, base : int ) -> int {
 
+    return num * base
+}
+
+MAX_LIMIT :: 100000000
+
+test :: proc () {
+    
+    /// with this approuch (abstract stack) i have a slow down of about 89% of a call of this same function,
+    /// procedural. NOICE.
+    /// with atual MAX_LIMIT = 100000000, we have (705 milliseconds) / (6.71 seconds) = 0.105067064 // on a i7-8650U CPU
+    /// (1-0.105) * 100 == 89.4% of slow down.
+    
     {
-	
 	// startup
-	
 	data : Slack
 	qu.init ( &data.stack )
 	context.user_ptr = &data
 	defer qu.destroy ( &data.stack )
 
 	// actual handle of data
-	multTwo := multplo_context ( 3 )
+	multTwo := multplo_context ( 2 )
 	
 	tmp := multTwo ( 11 )
-	
-	tmp2 := multTwo ( 22 )
 
-	fmt.println ( tmp )
+	tmp2 : int
+	when STRESS_TEST { 
+	    for i in 0..<(MAX_LIMIT + 1) {
+		tmp2 = multTwo ( i )
+
+		// fmt.print ( tmp2, " " )
+	    }
+	}
+	
+	// fmt.println ( tmp )
 	fmt.println ( tmp2 )
 	
     }
 }
+
+test_proc :: proc () {
+
+    {
+	
+	tmp2 : int
+	when STRESS_TEST {
+	    
+	    for i in 0..<(MAX_LIMIT + 1) {
+	
+		tmp2 = procedural_mult ( 2, i )
+	
+	    }
+	}
+	
+	fmt.println ( tmp2 )
+    }
+}
+
 
 main :: proc () {
 
@@ -135,6 +171,8 @@ main :: proc () {
     
     when TEST_MODE {
 	test ( )
+    } else {
+	test_proc ()
     }
 
     when SHOW_LEAK {
