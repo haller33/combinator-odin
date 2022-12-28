@@ -9,8 +9,10 @@ import qu "core:container/queue"
 SHOW_LEAK :: true
 TEST_MODE :: true
 
+Any :: union { int, f32, string, bool, rune }
+
 Poly :: struct {
-    data : union { int, f32, string, bool, rune },
+    data : Any,
 }
 
 Slack :: struct {
@@ -18,15 +20,43 @@ Slack :: struct {
     stack : qu.Queue ( Poly ),
 }
 
+
+push_raw :: proc ( m : rawptr, value : Poly ) {
+
+    push ( cast (^Slack) m, value )
+}
+
+push :: proc ( m : ^Slack, value : Poly ) {
+
+    qu.push_front ( &m.stack, value )
+}
+
+pop_raw :: proc ( m : rawptr ) -> Poly {
+
+    return pop ( cast (^Slack) m )
+}
+
+pop :: proc ( m : ^Slack ) -> Poly {
+    
+    return qu.pop_front ( &m.stack )
+}
+
+pop_poly :: proc ( m : rawptr ) -> Any {
+
+    ret := pop_raw ( m )
+    
+    return ret.data
+}
+
 multplo_context :: proc ( base_of : int, m := context.user_ptr ) -> proc ( int, rawptr ) -> int {
 
-    qu.push_front ( &(cast (^Slack) m).stack, Poly { data = base_of } )
+    push_raw ( m, Poly { data = base_of } )
     
     return proc ( num_test : int, mi := context.user_ptr ) -> int {
+	
+	actual_value := pop_poly ( mi )
 
-	actual_value : Poly = qu.pop_front ( &(cast (^Slack) mi).stack )
-
-	in_return : int = actual_value.data.(int)
+	in_return : int = actual_value.(int)
 	
 	return in_return * num_test
     }
