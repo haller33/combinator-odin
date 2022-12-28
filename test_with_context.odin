@@ -12,7 +12,7 @@ TEST_MODE :: true
 Any :: union { int, f32, string, bool, rune }
 
 Poly :: struct {
-    data : Any,
+    value : Any,
 }
 
 Slack :: struct {
@@ -45,37 +45,44 @@ pop_poly :: proc ( m : rawptr ) -> Any {
 
     ret := pop_raw ( m )
     
-    return ret.data
+    return ret.value
 }
 
-front :: proc ( m : ^Slack ) -> Poly {
+front_slack :: proc ( m : ^Slack ) -> Poly {
     
     return qu.front ( &m.stack )
 }
 
 front_raw :: proc ( m : rawptr ) -> Poly {
 
-    return front ( cast (^Slack) m )
+    return front_slack ( cast (^Slack) m )
 }
 
 front_poly :: proc ( m : rawptr ) -> Any {
 
     ret := front_raw ( m )
     
-    return ret.data
+    return ret.value
 }
 
+front :: proc () -> Any {
+    
+    mi := context.user_ptr
+    return front_poly ( mi )
+}
 
+v :: proc ( a : Any ) -> Poly {
+
+    return Poly { value = a }
+}
 
 multplo_context :: proc ( base_of : int, m := context.user_ptr ) -> proc ( int ) -> int {
 
-    push_raw ( m, Poly { data = base_of } )
+    push_raw ( m, v ( base_of ) )
     
     return proc ( num_test : int ) -> int { // inplicit context on this case, can have problems.
 
-	mi := context.user_ptr
-	
-	actual_value := front_poly ( mi )
+	actual_value := front ( )
 
 	in_return : int = actual_value.(int)
 	
