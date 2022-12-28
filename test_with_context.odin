@@ -71,7 +71,7 @@ multplo_context :: proc ( base_of : int, m := context.user_ptr ) -> proc ( int )
 
     push_raw ( m, Poly { data = base_of } )
     
-    return proc ( num_test : int ) -> int {
+    return proc ( num_test : int ) -> int { // inplicit context on this case, can have problems.
 
 	mi := context.user_ptr
 	
