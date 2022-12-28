@@ -48,13 +48,34 @@ pop_poly :: proc ( m : rawptr ) -> Any {
     return ret.data
 }
 
-multplo_context :: proc ( base_of : int, m := context.user_ptr ) -> proc ( int, rawptr ) -> int {
+front :: proc ( m : ^Slack ) -> Poly {
+    
+    return qu.front ( &m.stack )
+}
+
+front_raw :: proc ( m : rawptr ) -> Poly {
+
+    return front ( cast (^Slack) m )
+}
+
+front_poly :: proc ( m : rawptr ) -> Any {
+
+    ret := front_raw ( m )
+    
+    return ret.data
+}
+
+
+
+multplo_context :: proc ( base_of : int, m := context.user_ptr ) -> proc ( int ) -> int {
 
     push_raw ( m, Poly { data = base_of } )
     
-    return proc ( num_test : int, mi := context.user_ptr ) -> int {
+    return proc ( num_test : int ) -> int {
+
+	mi := context.user_ptr
 	
-	actual_value := pop_poly ( mi )
+	actual_value := front_poly ( mi )
 
 	in_return : int = actual_value.(int)
 	
@@ -62,22 +83,37 @@ multplo_context :: proc ( base_of : int, m := context.user_ptr ) -> proc ( int, 
     }
 }
 
+/*
+begin_container :: proc ( ) -> (^Slack, ^qu.Queue(Poly)) {
+
+    data := new(Slack)
+    qu.init ( &data^.stack )
+    // defer qu.destroy ( &data.stack )
+
+    return data, &((data^).stack)
+}
+*/
+
 test :: proc () {
 
     {
+	
 	// startup
+	
 	data : Slack
 	qu.init ( &data.stack )
+	context.user_ptr = &data
 	defer qu.destroy ( &data.stack )
-	
-	context.user_ptr = (cast(rawptr) &data)
 
 	// actual handle of data
-	multTwo := multplo_context ( 2 )
-
-	tmp := multTwo ( 10, context.user_ptr )
+	multTwo := multplo_context ( 3 )
+	
+	tmp := multTwo ( 11 )
+	
+	tmp2 := multTwo ( 22 )
 
 	fmt.println ( tmp )
+	fmt.println ( tmp2 )
 	
     }
 }
