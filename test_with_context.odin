@@ -65,15 +65,15 @@ multplo_context :: proc ( base_of : int, m := context.user_ptr ) -> proc ( int, 
 test :: proc () {
 
     {
+	// startup
 	data : Slack
 	qu.init ( &data.stack )
 	defer qu.destroy ( &data.stack )
 	
-	multTwo : proc ( int, rawptr ) -> ( int )
-
 	context.user_ptr = (cast(rawptr) &data)
-	
-	multTwo = multplo_context ( 2 )
+
+	// actual handle of data
+	multTwo := multplo_context ( 2 )
 
 	tmp := multTwo ( 10, context.user_ptr )
 
